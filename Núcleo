@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
-
+#include <string.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -76,6 +76,7 @@ uint8_t deviceAddress = 0x55;
 uint8_t spiData [2]; //enviar led y tiempo separados
 uint8_t input[10];
 uint8_t enter[1];
+uint8_t enterReceived = 0;
 /* USER CODE END 0 */
 
 /**
@@ -131,27 +132,31 @@ int main(void)
 			  HAL_UART_Transmit(&huart2, menuLed, sizeof(menuLed), 100);
 			  flag = 0;
 
-			  //Recibir valores de Led y tiempo
-			  if (HAL_UART_Receive(&huart2, input, sizeof(input), HAL_MAX_DELAY) == HAL_OK){
-				  if(HAL_UART_Receive(&huart2, enter, 1, HAL_MAX_DELAY) == HAL_OK && enter[0] == '\n'){ //Leer enter
-					  //Separar valores recibidos por usuario con una coma
-					  char *token = strtok((char*)input, ",");
-					  if (token != NULL){
-						  spiData[0] = atoi(token); //LED
-						  token = strtok(NULL, ",");
+			  while (!enterReceived){
+				  //Recibir valores de Led y tiempo
+				  if (HAL_UART_Receive(&huart2, input, sizeof(input), HAL_MAX_DELAY) == HAL_OK){
+					  if(input[0] == '\r'){ //Leer enter
+						  enterReceived = 1;
+					  }
+					  else{
+						  //Separar valores recibidos por usuario con una coma
+						  char *token = strtok((char*)input, ",");
 						  if (token != NULL){
-							  spiData[1] = atoi(token); //tiempo
+							  spiData[0] = atoi(token); //LED
+						  	  token = strtok(NULL, ",");
+						  	  if (token != NULL){
+						  		  spiData[1] = atoi(token); //tiempo
 
 							  //Revisar que los valores dados sean los correctos
-							  if ((spiData[0] >= 1 && spiData[0] <= 3) && (spiData[1] >= 100 && spiData[1] <= 5000)){
-								  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_RESET);
-								  HAL_SPI_Transmit(&hspi1, spiData, sizeof(spiData), HAL_MAX_DELAY);
-								  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_SET);
-							  }
+						  		  if ((spiData[0] >= 1 && spiData[0] <= 3) && (spiData[1] >= 100 && spiData[1] <= 5000)){
+						  			  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_RESET);
+						  			  HAL_SPI_Transmit(&hspi1, spiData, sizeof(spiData), HAL_MAX_DELAY);
+						  			  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_SET);
+						  		  }
 							  //Enviar menú de error en caso no sea valor lógico dentro de los parámetros
-							  else{
-								  HAL_UART_Transmit(&huart2, menuError, sizeof(menuError), 100);
-							  }
+						  		  else{
+						  			  HAL_UART_Transmit(&huart2, menuError, sizeof(menuError), 100);
+						  		  }
 						  }
 						  else{
 							  HAL_UART_Transmit(&huart2, menuError, sizeof(menuError), 100);
@@ -164,6 +169,7 @@ int main(void)
 				  }
 			  }
 		  }
+	}
 		  else if(decision[0] == '2') {
 		      // Solicitar la lectura del valor del potenciometro
 		      G[0] = 71;  // Valor arbitrario para indicar que queremos leer el potenciómetro
