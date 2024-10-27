@@ -1,0 +1,145 @@
+#include <Arduino.h>
+#include "Wire.h"
+#include <ESP32SPISlave.h>
+
+//Definición para librería de SPI slave
+ESP32SPISlave slave;
+
+//Variables para comunicación SPI slave
+static constexpr uint32_t BUFFER_SIZE {32};
+uint8_t spi_slave_tx_buf[BUFFER_SIZE];
+uint8_t spi_slave_rx_buf[BUFFER_SIZE];
+char cmd;
+
+//Potenciometro
+#define pot 39
+
+//Variables para leer potenciometros
+uint16_t leePot = 0;
+uint8_t mapPot = 0;
+
+//Definición de Leds
+#define led_1 13
+#define led_2 14
+#define led_3 26
+
+//Dirección I2C
+#define I2C_DEV_ADDR 0x55
+
+//Variables para función de led
+int led; 
+int tiempo; 
+int flag;
+
+//Definición de Funciones
+  //I2C
+void onRequest();
+void onReceive(int len);
+  //Encender Leds
+void leds (int led, int tiempo);
+
+void setup() {
+  Serial.begin(115200);
+  Serial.setDebugOutput(true);
+ 
+  //Definición como salidas de las leds
+  pinMode(led_1,OUTPUT);
+  pinMode(led_2,OUTPUT);
+  pinMode(led_3,OUTPUT);
+
+  //Definición de estado de led
+  digitalWrite(led_1,LOW);
+  digitalWrite(led_2,LOW);
+  digitalWrite(led_3,LOW);
+
+  //Funciones para recibir y mandar datos I2C
+  Wire.onReceive(onReceive);
+  Wire.onRequest(onRequest);
+  Wire.begin((uint8_t)I2C_DEV_ADDR);
+
+  //Inicio de funciones SPI
+  slave.setDataMode(SPI_MODE0);
+  slave.setQueueSize(1);
+  slave.begin(VSPI);
+
+  //clear buffers
+  memset(spi_slave_tx_buf, 0, BUFFER_SIZE);
+  memset(spi_slave_rx_buf, 0, BUFFER_SIZE);
+}
+
+void loop() {
+  //Block until the transaction comes from master
+  slave.wait(spi_slave_rx_buf, spi_slave_tx_buf, BUFFER_SIZE);
+
+  if(slave.available()){
+    //leer valores enviados desde el núcleo
+    led = spi_slave_rx_buf[0];
+    tiempo = spi_slave_rx_buf[1];
+
+    //Envar valores a función leds la cual enciende la led requerida
+    leds(led, tiempo);
+
+    Serial.println(led);
+    Serial.println(',');
+    Serial.println(tiempo);
+  }
+}
+
+//Función que recibe datos para I2C
+void onReceive(int len){
+  while (Wire.available()){
+    uint8_t alerta = Wire.read();
+    //bandera que indica cuando se tienen los mensajes
+    if (alerta == 71){
+      flag = 0;
+    }
+    else{
+      flag = 1;
+    }
+  }
+}
+
+//Función que envía datos para I2C
+void onRequest(){
+  if(flag == 0){
+    flag = 1;
+
+    //leer y mapear potenciometro
+    leePot = analogRead(pot);
+    mapPot = map(leePot, 0, 4095, 0, 255);
+
+    //Enviar en I2C
+    Wire.write(mapPot);
+  }
+}
+
+//Función encargada de encender la led indicada por el usuario con el tiempo indicado por el usuario
+void leds (int led, int tiempo){
+  if (led == 1){
+    digitalWrite(led_1, HIGH);
+    digitalWrite(led_2, LOW);
+    digitalWrite(led_3, LOW);
+    delay(tiempo);
+    digitalWrite(led_1, LOW); //apagar la led
+    digitalWrite(led_2, LOW);
+    digitalWrite(led_3, LOW);
+  }
+  if (led == 2){
+    digitalWrite(led_1, LOW);
+    digitalWrite(led_2, HIGH);
+    digitalWrite(led_3, LOW);
+    delay(tiempo);
+    digitalWrite(led_1, LOW);
+    digitalWrite(led_2, LOW);
+    digitalWrite(led_3, LOW);
+  }
+  if (led == 3){
+    digitalWrite(led_1, LOW);
+    digitalWrite(led_2, LOW);
+    digitalWrite(led_3, HIGH);
+    delay(tiempo);
+    digitalWrite(led_1, LOW);
+    digitalWrite(led_2, LOW);
+    digitalWrite(led_3, LOW);
+  }
+}
