@@ -133,9 +133,11 @@ int main(void)
 			  flag = 0;
 
 			  while (!enterReceived){
+				  //Limpiar antes de recibir datos
+				  memset(input, 0, sizeof(input));
 				  //Recibir valores de Led y tiempo
 				  if (HAL_UART_Receive(&huart2, input, sizeof(input), HAL_MAX_DELAY) == HAL_OK){
-					  if(input[0] == '\r'){ //Leer enter
+					  if(input[0] == '\r' || input[0] == '\n' ){ //Leer enter
 						  enterReceived = 1;
 					  }
 					  else{
