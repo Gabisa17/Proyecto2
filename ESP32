@@ -9,7 +9,6 @@ ESP32SPISlave slave;
 static constexpr uint32_t BUFFER_SIZE {32};
 uint8_t spi_slave_tx_buf[BUFFER_SIZE];
 uint8_t spi_slave_rx_buf[BUFFER_SIZE];
-char cmd;
 
 //Potenciometro
 #define pot 39
@@ -27,8 +26,8 @@ uint8_t mapPot = 0;
 #define I2C_DEV_ADDR 0x55
 
 //Variables para función de led
-int led; 
-int tiempo; 
+uint8_t led; 
+uint16_t tiempo; 
 int flag;
 
 //Definición de Funciones
@@ -74,13 +73,14 @@ void loop() {
   if(slave.available()){
     //leer valores enviados desde el núcleo
     led = spi_slave_rx_buf[0];
-    tiempo = spi_slave_rx_buf[1];
+    tiempo = (spi_slave_rx_buf[1] << 8) | spi_slave_rx_buf[2];
 
     //Envar valores a función leds la cual enciende la led requerida
     leds(led, tiempo);
 
+    Serial.print("LED recibido: ");
     Serial.println(led);
-    Serial.println(',');
+    Serial.print("Tiempo recibido: ");
     Serial.println(tiempo);
   }
 }
