@@ -134,7 +134,7 @@ int main(void)
 		  if (decision[0] == '1') {
 			  HAL_UART_Transmit(&huart2, menuLed, sizeof(menuLed), 100);
 			  flag = 0;
-
+			  //While con indice el cual se rompe al precionar enter
 			  while (ind < sizeof(input) - 1) {
 				  if (HAL_UART_Receive(&huart2, (uint8_t *)&lecturaLedT, 1, HAL_MAX_DELAY) == HAL_OK) {
 					  if (lecturaLedT == enter) {
@@ -145,22 +145,22 @@ int main(void)
 			  }
 
 			  // Realizar la conversión de la entrada usando sscanf
-			  int moduloLed = sscanf((char *)input, "%d,%d", &choiceLed, &choiceTime);
+			  int moduloLed = sscanf((char *)input, "%d,%d", &choiceLed, &choiceTime);//separa lo dado por el usuario en dos variables
 
-			  // Validar si la conversión fue exitosa
+			  // Validar si la conversión fue exitosa y recibir variables por partes
 			  if (moduloLed == 2) {
 				  char debugMsg[50];
-				  sprintf(debugMsg, "Led: %d, Tiempo: %d\n", choiceLed, choiceTime);
-				  HAL_UART_Transmit(&huart2, (uint8_t *)debugMsg, strlen(debugMsg), 100);
+				  sprintf(debugMsg, "Led: %d, Tiempo: %d\n", choiceLed, choiceTime); 
+				  HAL_UART_Transmit(&huart2, (uint8_t *)debugMsg, strlen(debugMsg), 100);//imprime para que el usuario pueda ver las variables dadas
 
 				  if ((choiceLed >= 1 && choiceLed <= 3) && (choiceTime >= 100 && choiceTime <= 5000)){
 					  // Preparar datos para SPI
 					  spiData[0] = choiceLed;
-					  spiData[1] = choiceTime >> 8;
+					  spiData[1] = choiceTime >> 8; //se toma en cuenta como en 2 bytes ya que el tiempo puede ocupar más de uno
 					  spiData[2] = choiceTime & 0xFF;
 
 					  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_RESET);
-					  HAL_SPI_Transmit(&hspi1, spiData, sizeof(spiData), HAL_MAX_DELAY);
+					  HAL_SPI_Transmit(&hspi1, spiData, sizeof(spiData), HAL_MAX_DELAY); //Se envía la información de las leds al ESP32
 					  HAL_GPIO_WritePin(ESP32_CS_GPIO_Port, ESP32_CS_Pin, GPIO_PIN_SET);
 				  }
 				  else{
@@ -174,6 +174,7 @@ int main(void)
 				  // Error en la conversión de datos
 				  HAL_UART_Transmit(&huart2, menuError, sizeof(menuError), 100);
 			  }
+			  //Se limpia el buffer de input
 			  memset(input, 0, sizeof(input));
 			  ind = 0;
 		  }
@@ -189,14 +190,15 @@ int main(void)
 		      // Recibir el valor del potenciometro desde el ESP32
 		      if(HAL_I2C_Master_Receive(&hi2c1, (deviceAddress << 1) | 0x01, leerI2C, 1, HAL_MAX_DELAY) == HAL_OK) {
 		    	  char mensaje[50];
-		          sprintf(mensaje, "\n Valor sensor = %d \n", leerI2C[0]);
-		          HAL_UART_Transmit(&huart2, (uint8_t *)mensaje, strlen(mensaje), HAL_MAX_DELAY);
+		          sprintf(mensaje, "\n Valor sensor = %d \n", leerI2C[0]); 
+		          HAL_UART_Transmit(&huart2, (uint8_t *)mensaje, strlen(mensaje), HAL_MAX_DELAY); //imprime el valor por com. UART
 		      }
 		      HAL_Delay(500);
 		      flag = 0;
 		  }
 
 		  else{
+			  //Menu de error para el menú principal
 			  HAL_UART_Transmit(&huart2, menuError, sizeof(menuError), 100);
 			  flag = 0;
 		  }
